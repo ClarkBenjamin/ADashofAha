@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>MyDashboardPrototype</title>
+    <script src="ahaLibrary.js"></script>
+    <script src="ahaProduct.js"></script>
+</head>
+
+
+<body>
+<script>
+
+    var mProducts = [];
+    var count = 0;
+
+
+    function getDetailsOnProductLines(){
+        haveGotDetails = new Promise(function(resolve, reject) {
+            mProducts.forEach(function (product){
+                if(product.productLine){
+                    count ++;
+                    ahaClient.search({"type":"products","id":product.id}).then(function(productJSON){
+                        product.addExtendedData(productJSON.product);
+                        count --;
+                        if(count==0)resolve();
+                    });
+                }
+            });
+        });
+
+        haveGotDetails.then(function(){
+            mProducts.forEach(function(product){
+                console.log(product.toString());
+            });
+        });
+    }
+
+    function recursivePaging (ahaClient, jsonResponse){
+        if(typeof jsonResponse.pagination !== 'undefined' && typeof jsonResponse.pagination.next_page !== 'undefined'){
+            ahaClient.nextPage(jsonResponse.pagination.next_page).then(function(response){
+                response.products.forEach(function(productJSON){mProducts.push(new Product(productJSON));	});
+                recursivePaging(ahaClient, response);
+            });
+        }else{
+            getDetailsOnProductLines();
+        }
+    }
+
+    var ahaClient = new aha();
+
+    ahaClient.search({"type":"products"}).then(function(products){
+        products.products.forEach(function(productJSON){mProducts.push(new Product(productJSON));	});
+        recursivePaging(ahaClient, products);
+    });
+
+</script>
+
+
+<div id="demo"></div>
+
+</body>
+
+</html>
